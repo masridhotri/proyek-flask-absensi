@@ -1,0 +1,160 @@
+{% extends "layout/app.html" %}
+
+{% block content %}
+
+<div class="bg-white rounded-2xl shadow p-4">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold text-gray-700">Data finger </h2>
+        <button onclick="openModal()" class="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm">
+            + Tambah
+        </button>
+    </div>
+
+    <!-- Search -->
+    <input id="search" type="text" placeholder="Cari prodi..." class="border rounded-lg px-3 py-2 text-sm w-full mb-3">
+
+    <!-- Table -->
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-left border-b text-gray-500">
+                <th class="py-2">ID</th>
+                <th>Kode</th>
+                <th>Nama</th>
+                <th class="text-right">Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center">
+
+    <div class="bg-white w-full max-w-md rounded-xl p-6">
+
+        <h2 class="font-semibold mb-4">Form Prodi</h2>
+
+        <form method="POST" action="/progli/create">
+
+            <input type="text" name="kode" placeholder="Kode" class="w-full mb-3 px-3 py-2 border rounded-lg" required>
+
+            <input type="text" name="nama" placeholder="Nama" class="w-full mb-4 px-3 py-2 border rounded-lg" required>
+
+            <div class="flex justify-end gap-2">
+
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded-lg">
+                    Batal
+                </button>
+
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg">
+                    Simpan
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+    let editId = null;
+
+    const tableBody = document.getElementById('tableBody');
+    const search = document.getElementById('search');
+
+    let data = [];
+
+    /* ================= INIT ================= */
+    loadData();
+
+    /* ================= LOAD FROM DB ================= */
+    function loadData() {
+        fetch('/api/siswa/daftar-list')
+            .then(res => res.json())
+            .then(res => {
+                data = res;
+                render();
+            });
+    }
+
+    /* ================= RENDER ================= */
+    function render() {
+        const keyword = search.value?.toLowerCase() || '';
+
+        const filtered = data.filter(d =>
+            (d.finger_id?.toString().includes(keyword)) ||
+            (d.nama?.toLowerCase().includes(keyword)) ||
+            (d.kelas?.toString().toLowerCase().includes(keyword))
+        );
+
+        tableBody.innerHTML = filtered.map(d => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="py-2">${d.id}</td>
+            <td>${d.finger_id}</td>
+            <td>${d.nama ?? '-'}</td>
+            <td>${d.kelas ?? '-'}</td>
+            <td class="text-right space-x-2">
+                <button onclick="edit(${d.id})" class="text-blue-500">Edit</button>
+                <button onclick="remove(${d.id})" class="text-red-500">Hapus</button>
+            </td>
+        </tr>
+    `).join('');
+    }
+    /* ================= SEARCH ================= */
+    search.addEventListener('input', render);
+    /* ================= FORM ================= */
+    const modal = document.getElementById('modal');
+
+    /* ================= OPEN MODAL ================= */
+    function openModal() {
+        if (!modal) return;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex', 'items-center', 'justify-center');
+    }
+
+    /* ================= CLOSE MODAL ================= */
+    function closeModal() {
+        if (!modal) return;
+
+        modal.classList.add('hidden');
+        modal.classList.remove('flex', 'items-center', 'justify-center');
+    }
+    /* ================= EDIT ================= */
+    function edit(id) {
+        const item = data.find(d => d.id === id);
+
+        document.getElementById('kode').value = item.kode;
+        document.getElementById('nama').value = item.nama;
+
+        editId = id;
+        toggle(true);
+    }
+
+    /* ================= DELETE ================= */
+    function remove(id) {
+        if (!confirm("Yakin mau hapus data ini?")) return;
+
+        fetch(`/api/progli/${id}`, {
+            method: 'DELETE'
+        })
+            .then(res => res.json())
+            .then(res => {
+                console.log(res);
+                loadData(); // refresh tabel
+            })
+            .catch(err => {
+                console.error("DELETE ERROR:", err);
+            });
+    }
+
+    /* ================= EVENT ================= */
+    search.addEventListener('input', render);
+
+    /* ================= INIT ================= */
+    render();
+</script>
+{% endblock %}

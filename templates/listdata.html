@@ -1,0 +1,287 @@
+{% extends "layout/app.html" %}
+
+{% block content %}
+
+
+
+
+<div id="deviceModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center">
+
+    <div class="bg-white rounded-2xl shadow p-6 w-full max-w-lg">
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Device Status</h2>
+            <button onclick="toggleModal(false)">✕</button>
+        </div>
+
+        <div class="space-y-3">
+
+            <div class="flex justify-between items-center">
+                <span>ESP32 - Kelas 1</span>
+                <p class="mt-1 text-sm font-medium text-purple-600">
+                    83% Connected
+                </p>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <span>ESP32 - Kelas 2</span>
+                <span class="text-red-500 font-medium">Offline</span>
+            </div>
+
+            <div class="text-sm text-gray-400">
+                Last update: 10 detik lalu
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+<!-- Main Section -->
+
+<div class="grid md:grid-cols-1 gap-1">
+
+    <!-- Chart -->
+    <!-- <div class="md:col-span-2 bg-white rounded-2xl shadow p-4">
+            <h2 class="font-semibold text-gray-700 mb-4">Absensi Siswa</h2>
+            <canvas id="chart" class="w-full h-64"></canvas>
+        </div> -->
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow p-4 flex flex-col">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+            <h2 class="font-semibold text-gray-700">Data Murid</h2>
+            <div>
+                <input id="search" type="text" placeholder="Search..."
+                    class="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <select id="statusFilter"
+                    class="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                    <option value="all">Semua</option>
+                    <option value="Hadir">Hadir</option>
+                    <option value="Telat">Telat</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left border-b text-gray-500">
+                        <th class="py-2">ID</th>
+                        <th>Nama</th>
+                        <th>Waktu</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="text-gray-700"></tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2 text-sm">
+            <span id="pageInfo" class="text-gray-500"></span>
+            <div id="pagination" class="flex flex-nowrap  gap-1 overflow-x-auto"
+                style="-ms-overflow-style: none; scrollbar-width: none;"></div>
+        </div>
+
+    </div>
+</div>
+</div>
+
+
+</div>
+<!-- <script>
+    const ctx = document.getElementById('chart');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['08:00', '09:00', '10:00', '11:00'],
+            datasets: [{
+                label: 'Abesensi Siswa',
+                data: [2, 5, 3, 7],
+                borderWidth: 2,
+                tension: 0.4
+
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+</script> -->
+<script>
+    /* =========================
+       STATE
+    ========================= */
+    const state = {
+        data: Array.from({ length: 30 }, (_, i) => ({
+            id: i + 1,
+            nama: 'User ' + (i + 1),
+            waktu: Math.floor(Math.random() * 24) + ':00',
+            status: ['Hadir', 'Telat'][Math.floor(Math.random() * 2)]
+        })),
+        filtered: [],
+        currentPage: 1,
+        rowsPerPage: 10
+    };
+
+    /* =========================
+       ELEMENTS
+    ========================= */
+    const el = {
+        tableBody: document.getElementById('tableBody'),
+        pagination: document.getElementById('pagination'),
+        pageInfo: document.getElementById('pageInfo'),
+        search: document.getElementById('search'),
+        status: document.getElementById('statusFilter')
+    };
+
+    /* =========================
+       INIT
+    ========================= */
+    function init() {
+        state.filtered = [...state.data];
+        bindEvents();
+        render();
+    }
+
+    /* =========================
+       EVENTS
+    ========================= */
+    function bindEvents() {
+        el.search.addEventListener('input', handleFilter);
+        el.status.addEventListener('change', handleFilter);
+    }
+
+    /* =========================
+       FILTER
+    ========================= */
+    function handleFilter() {
+        const keyword = el.search.value.toLowerCase();
+        const status = el.status.value;
+
+        state.filtered = state.data.filter(item => {
+            const matchName = item.nama.toLowerCase().includes(keyword);
+            const matchStatus = status === 'all' || item.status === status;
+            return matchName && matchStatus;
+        });
+
+        state.currentPage = 1;
+        render();
+    }
+
+    /* =========================
+       RENDER
+    ========================= */
+    function render() {
+        renderTable();
+        renderPagination();
+    }
+
+    /* =========================
+       TABLE
+    ========================= */
+    function renderTable() {
+        const start = (state.currentPage - 1) * state.rowsPerPage;
+        const pageData = state.filtered.slice(start, start + state.rowsPerPage);
+
+        if (pageData.length === 0) {
+            el.tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-6 text-gray-400">
+                    Data tidak ditemukan
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        el.tableBody.innerHTML = pageData.map(rowTemplate).join('');
+    }
+
+    function rowTemplate(item) {
+        return `
+        <tr class="border-b hover:bg-gray-50 transition">
+            <td class="py-3">${item.id}</td>
+            <td>${item.nama}</td>
+            <td>${item.waktu}</td>
+            <td>${statusBadge(item.status)}</td>
+            <td class="text-right space-x-2">
+                <button class="text-blue-500 hover:underline">Edit</button>
+                <button class="text-red-500 hover:underline">Hapus</button>
+            </td>
+        </tr>
+    `;
+    }
+
+    function statusBadge(status) {
+        const base = "px-2 py-1 text-xs rounded-full";
+
+        return status === 'Hadir'
+            ? `<span class="${base} bg-green-100 text-green-600">Hadir</span>`
+            : `<span class="${base} bg-yellow-100 text-yellow-600">Telat</span>`;
+    }
+
+    /* =========================
+       PAGINATION
+    ========================= */
+    function renderPagination() {
+        const totalPages = Math.ceil(state.filtered.length / state.rowsPerPage);
+        el.pageInfo.innerText = `Page ${state.currentPage} of ${totalPages}`;
+
+        el.pagination.innerHTML = buildPagination(totalPages);
+    }
+
+    function buildPagination(totalPages) {
+        let buttons = '';
+
+        if (state.currentPage > 1) {
+            buttons += pageBtn('Prev', state.currentPage - 1);
+        }
+
+        let start = Math.max(1, state.currentPage - 1);
+        let end = Math.min(totalPages, start + 3);
+
+        for (let i = start; i <= end; i++) {
+            buttons += pageBtn(i, i, i === state.currentPage);
+        }
+
+        if (state.currentPage < totalPages) {
+            buttons += pageBtn('Next', state.currentPage + 1);
+        }
+
+        return buttons;
+    }
+
+    function pageBtn(label, page, active = false) {
+        return `
+        <button onclick="goToPage(${page})"
+            class="px-3 py-1 rounded-lg border text-sm ${active
+                ? 'bg-purple-600 text-white'
+                : 'hover:bg-gray-100 text-gray-600'
+            }">
+            ${label}
+        </button>
+    `;
+    }
+
+    function goToPage(page) {
+        state.currentPage = page;
+        render();
+    }
+
+    /* =========================
+       MODAL
+    ========================= */
+    function toggleModal(show) {
+        const modal = document.getElementById('deviceModal');
+        modal.classList.toggle('hidden', !show);
+        modal.classList.toggle('flex', show);
+    }
+
+    /* =========================
+       START
+    ========================= */
+    init();
+</script>
+{% endblock %}

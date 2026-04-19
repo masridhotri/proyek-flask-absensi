@@ -1,4 +1,4 @@
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_TOPIC = "esp/#"
-MQTT_KEEPALIVE = 60
+class Config:
+    MQTT_BROKER = "192.168.18.129"
+    MQTT_PORT = 1883
+    MQTT_TOPIC = "sensor/data"
